@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NERV Biometric - Unit-001 Modern</title>
+    <!-- AI Face API Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <!-- JSZip for batch downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Teko:wght@600;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --eva-purple-dark: #1a0f2e;
+            --eva-purple-main: #2d1b4d;
+            --eva-purple-bright: #7a1fa2;
+            /* Mengubah hijau neon menjadi Kuning sedikit kehijauan (Volt/Lime) */
+            --eva-neon-green: #d4ff00; 
+            --eva-green-glow: rgba(212, 255, 0, 0.4);
+            --eva-orange: #ff8c00;
+            --eva-red: #ff0033;
+            --bg-black: #0a0a0c;
+        }
+
+        body { 
+            background-color: var(--bg-black);
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(45, 27, 77, 0.3) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(212, 255, 0, 0.03) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .teko { font-family: 'Teko', sans-serif; }
+
+        .glass-panel {
+            background: rgba(26, 15, 46, 0.4);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(122, 31, 162, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+            border-radius: 4px;
+        }
+
+        .eva-header-box {
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 95% 100%, 0 100%);
+            background: var(--eva-purple-main);
+            border-left: 8px solid var(--eva-neon-green);
+        }
+
+        .scan-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(to bottom, transparent, var(--eva-neon-green), transparent);
+            position: absolute;
+            animation: scan 3s linear infinite;
+            z-index: 10;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        .btn-eva {
+            background: transparent;
+            border: 1px solid var(--eva-neon-green);
+            color: var(--eva-neon-green);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-eva:hover:not(:disabled) {
+            background: var(--eva-neon-green);
+            color: var(--bg-black);
+            box-shadow: 0 0 20px var(--eva-green-glow);
+        }
+
+        .btn-eva:disabled {
+            opacity: 0.3;
+            border-color: #4b2c6d;
+            cursor: not-allowed;
+        }
+
+        /* Override untuk teks hijau di Tailwind agar mengikuti variabel CSS */
+        .text-green-400 { color: var(--eva-neon-green) !important; }
+        .bg-green-400 { background-color: var(--eva-neon-green) !important; }
+        .bg-green-500 { background-color: var(--eva-neon-green) !important; }
+        .border-green-500 { border-color: var(--eva-neon-green) !important; }
+
+        .btn-extract {
+            background: var(--eva-purple-bright);
+            border: 1px solid var(--eva-neon-green);
+            clip-path: polygon(0 0, 95% 0, 100% 30%, 100% 100%, 5% 100%, 0 70%);
+        }
+
+        .drop-zone {
+            border: 2px dashed rgba(212, 255, 0, 0.2);
+            background: rgba(45, 27, 77, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--eva-neon-green);
+            background: rgba(212, 255, 0, 0.05);
+            box-shadow: inset 0 0 20px rgba(212, 255, 0, 0.1);
+        }
+
+        .scroll-custom::-webkit-scrollbar { width: 4px; }
+        .scroll-custom::-webkit-scrollbar-track { background: transparent; }
+        .scroll-custom::-webkit-scrollbar-thumb { background: var(--eva-purple-bright); border-radius: 10px; }
+
+        input[type=range] { accent-color: var(--eva-neon-green); }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--eva-purple-bright);
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .loader::after {
+            content: '';  
+            box-sizing: border-box;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: var(--eva-neon-green);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+
+        .hazard-border {
+            background: repeating-linear-gradient(-45deg, var(--eva-orange), var(--eva-orange) 10px, #000 10px, #000 20px);
+            height: 4px;
+        }
+        
+        .preview-card canvas {
+            width: 100%;
+            height: auto;
+            border: 1px solid rgba(212, 255, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div class="hazard-border"></div>
+
+    <div class="max-w-7xl mx-auto w-full p-4 md:p-8 flex-grow">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div class="eva-header-box p-4 pr-12">
+                <p class="mono text-[10px] text-green-400/60 uppercase tracking-[0.4em] mb-1">NERV Biometric Division</p>
+                <h1 class="teko text-5xl text-white leading-none tracking-tight">
+                    UNIT-001 <span class="text-green-400">EVANGELION CROP</span>
+                </h1>
+            </div>
+            <div class="flex flex-col items-end mono text-xs">
+                <div class="flex gap-4 mb-1">
+                    <span class="text-purple-400">SYNC_RATE: <span class="text-white">400%</span></span>
+                    <span class="text-orange-500">MAGI: <span class="text-white">ONLINE</span></span>
+                </div>
+                <div class="h-1 w-48 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-green-500 w-full shadow-[0_0_8px_var(--eva-green-glow)]"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Loading -->
+        <div id="loadingOverlay" class="glass-panel flex flex-col items-center justify-center py-24">
+            <div class="loader mb-6"></div>
+            <p id="status" class="mono text-xs tracking-[0.5em] text-green-400 animate-pulse">SYNCHRONIZING WITH LCL CORE...</p>
+        </div>
+
+        <!-- Main UI -->
+        <div id="mainUI" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Sidebar -->
+                <div class="lg:col-span-4 space-y-4">
+                    <div class="glass-panel p-6 drop-zone h-64 flex flex-col items-center justify-center cursor-pointer text-center group" id="dropZone">
+                        <input type="file" id="upload" accept="image/*" multiple class="hidden">
+                        <svg class="w-12 h-12 text-purple-500 mb-4 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        <h3 class="teko text-2xl text-white uppercase tracking-wider">Upload Data Samples</h3>
+                        <p class="mono text-[10px] text-gray-500 mt-2 uppercase">Drag & drop images for auto-biometric crop</p>
+                    </div>
+
+                    <div class="glass-panel p-5 space-y-5">
+                        <div>
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="teko text-lg text-green-400 uppercase tracking-wide">Zoom Level</label>
+                                <span id="zoomValDisplay" class="mono text-[10px] text-white bg-purple-900 px-2 py-0.5 rounded">0.45</span>
+                            </div>
+                            <input type="range" id="zoomRange" min="0.2" max="0.8" step="0.05" value="0.45" class="w-full h-1.5 rounded-lg cursor-pointer bg-gray-800">
+                        </div>
+
+                        <div>
+                            <label class="teko text-lg text-green-400 uppercase tracking-wide block mb-3">Target Dimensions</label>
+                            <div class="grid grid-cols-3 gap-2" id="ratioContainer">
+                                <button class="btn-eva active py-2 teko text-xl" data-type="ratio" data-w="600" data-h="800" data-label="3x4">3x4</button>
+                                <button class="btn-eva py-2 teko text-xl" data-type="ratio" data-w="400" data-h="600" data-label="2x3">2x3</button>
+                                <button class="btn-eva py-2 teko text-xl" data-type="ratio" data-w="800" data-h="1200" data-label="4x6">4x6</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="teko text-lg text-green-400 uppercase tracking-wide block mb-3">Background Core</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button class="btn-eva active text-[10px] py-2 mono" data-type="bg" data-val="auto">AUTO</button>
+                                <button class="btn-eva text-[10px] py-2 mono" data-type="bg" data-val="#ff0000">RED</button>
+                                <button class="btn-eva text-[10px] py-2 mono" data-type="bg" data-val="#0000ff">BLUE</button>
+                                <button class="btn-eva text-[10px] py-2 mono" data-type="bg" data-val="#00ff00">GREEN</button>
+                                <button class="btn-eva text-[10px] py-2 mono" data-type="bg" data-val="#ffffff">WHITE</button>
+                                <button class="btn-eva text-[10px] py-2 mono" data-type="bg" data-val="#000000">BLACK</button>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-purple-900/40">
+                            <button id="downloadZip" disabled class="btn-eva btn-extract w-full py-4 text-2xl teko tracking-[0.1em] mb-3">Extract_All.ZIP</button>
+                            <button id="btnClear" class="w-full py-1 mono text-[9px] text-red-500 hover:text-white transition-colors uppercase">Eject All Data</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Display -->
+                <div class="lg:col-span-8 flex flex-col space-y-4">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="glass-panel p-3 border-l-4 border-purple-500">
+                            <p class="mono text-[9px] text-gray-500 uppercase">Input Files</p>
+                            <p id="totalCount" class="teko text-3xl leading-none mt-1">0</p>
+                        </div>
+                        <div class="glass-panel p-3 border-l-4 border-green-500">
+                            <p class="mono text-[9px] text-gray-500 uppercase">Synchronized</p>
+                            <p id="successCount" class="teko text-3xl leading-none mt-1 text-green-400">0</p>
+                        </div>
+                        <div class="glass-panel p-3 border-l-4 border-red-500">
+                            <p class="mono text-[9px] text-gray-500 uppercase">Rejected</p>
+                            <p id="failCount" class="teko text-3xl leading-none mt-1 text-red-500">0</p>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow flex flex-col glass-panel overflow-hidden relative">
+                        <div class="scan-line"></div>
+                        <div class="bg-purple-950/40 px-4 py-2 border-b border-purple-900/30 flex justify-between items-center">
+                            <span class="mono text-[10px] uppercase font-bold text-purple-300 tracking-widest">Biometric Monitor</span>
+                            <span id="activeRatioLabel" class="mono text-[9px] text-green-400">[3x4]</span>
+                        </div>
+                        <div class="p-6 overflow-y-auto scroll-custom flex-grow" style="max-height: 600px;">
+                            <div id="previewSuccess" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                <div id="emptyState" class="col-span-full py-32 flex flex-col items-center justify-center opacity-20">
+                                    <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    <p class="mono text-xs tracking-widest">WAITING FOR DATA INPUT...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-4 bg-red-950/5">
+                        <p class="mono text-[9px] text-red-500 font-bold uppercase mb-2">Internal Error Log</p>
+                        <div id="previewFail" class="space-y-1 max-h-32 overflow-y-auto scroll-custom">
+                            <p id="noFailState" class="mono text-[9px] text-gray-600 italic">SYSTEM STATUS: NOMINAL</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-12 flex flex-col items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="h-px w-12 bg-purple-900"></div>
+                <div class="flex items-center">
+                    <span class="bg-red-600 text-white px-3 py-0.5 teko text-sm font-black uppercase">NERV HQ</span>
+                    <span class="border border-red-600 px-3 py-0.5 mono text-[10px] text-white">DERRY_OS_PRO</span>
+                </div>
+                <div class="h-px w-12 bg-purple-900"></div>
+            </div>
+            <p class="mono text-[8px] text-gray-600 tracking-[0.6em] uppercase">Human Instrumentality Project // Security Level: AAA</p>
+        </footer>
+    </div>
+
+    <div class="hazard-border"></div>
+
+<script>
+    const upload = document.getElementById('upload');
+    const dropZone = document.getElementById('dropZone');
+    const previewSuccess = document.getElementById('previewSuccess');
+    const previewFail = document.getElementById('previewFail');
+    const statusText = document.getElementById('status');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const mainUI = document.getElementById('mainUI');
+    const btnZip = document.getElementById('downloadZip');
+    const btnClear = document.getElementById('btnClear');
+    const emptyState = document.getElementById('emptyState');
+    const noFailState = document.getElementById('noFailState');
+    const activeRatioLabel = document.getElementById('activeRatioLabel');
+    const zoomRange = document.getElementById('zoomRange');
+    const zoomValDisplay = document.getElementById('zoomValDisplay');
+    
+    const totalCountDisp = document.getElementById('totalCount');
+    const successCountDisp = document.getElementById('successCount');
+    const failCountDisp = document.getElementById('failCount');
+    
+    let currentConfig = { w: 600, h: 800, label: '3x4' };
+    let bgMode = 'auto';
+    let croppedImages = [];
+    let successCount = 0;
+    let failCount = 0;
+    let uploadedFiles = []; 
+
+    async function initAI() {
+        try {
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            loadingOverlay.classList.add('hidden');
+            mainUI.classList.remove('hidden');
+        } catch (err) {
+            statusText.innerText = "CRITICAL: AI CORE OFFLINE";
+            statusText.classList.add('text-red-500');
+        }
+    }
+
+    document.querySelectorAll('.btn-eva').forEach(btn => {
+        btn.onclick = () => {
+            const type = btn.dataset.type;
+            if(!type) return;
+            document.querySelectorAll(`.btn-eva[data-type="${type}"]`).forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (type === 'ratio') {
+                currentConfig = {
+                    w: parseInt(btn.dataset.w),
+                    h: parseInt(btn.dataset.h),
+                    label: btn.dataset.label
+                };
+                activeRatioLabel.innerText = `[${currentConfig.label}]`;
+            } else if (type === 'bg') {
+                bgMode = btn.dataset.val;
+            }
+            reprocessAll();
+        };
+    });
+
+    zoomRange.oninput = () => { zoomValDisplay.innerText = zoomRange.value; };
+    zoomRange.onchange = () => reprocessAll();
+
+    dropZone.onclick = () => upload.click();
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleFiles(e.dataTransfer.files);
+    };
+    upload.onchange = (e) => handleFiles(e.target.files);
+
+    btnClear.onclick = () => {
+        previewSuccess.innerHTML = '';
+        previewSuccess.appendChild(emptyState);
+        previewFail.innerHTML = '';
+        previewFail.appendChild(noFailState);
+        croppedImages = [];
+        uploadedFiles = [];
+        successCount = 0;
+        failCount = 0;
+        updateStats();
+        btnZip.disabled = true;
+        upload.value = '';
+        emptyState.style.display = 'flex';
+    };
+
+    async function reprocessAll() {
+        if (uploadedFiles.length === 0) return;
+        const currentFiles = [...uploadedFiles];
+        previewSuccess.innerHTML = '';
+        previewSuccess.appendChild(emptyState);
+        previewFail.innerHTML = '';
+        previewFail.appendChild(noFailState);
+        croppedImages = [];
+        successCount = 0;
+        failCount = 0;
+        handleFiles(currentFiles, true);
+    }
+
+    async function handleFiles(files, isReprocessing = false) {
+        if (!files.length) return;
+        emptyState.style.display = 'none';
+        
+        if (!isReprocessing) {
+            for (let f of files) {
+                if (!uploadedFiles.some(existing => existing.name === f.name && existing.size === f.size)) {
+                    uploadedFiles.push(f);
+                }
+            }
+        }
+        
+        const filesToProcess = Array.from(isReprocessing ? files : files);
+
+        for (let file of filesToProcess) {
+            if (!file.type.startsWith('image/')) continue;
+            
+            const fileId = crypto.randomUUID();
+            try {
+                const img = await faceapi.bufferToImage(file);
+                let detections = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.15 }));
+                
+                if (detections.length === 0) {
+                    detections = await faceapi.detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.1 }));
+                }
+
+                if (detections.length > 0) {
+                    const face = detections.sort((a, b) => b.box.width - a.box.width)[0].box;
+                    const canvas = processImage(img, face);
+                    const base64 = canvas.toDataURL('image/jpeg', 0.92);
+
+                    const container = document.createElement('div');
+                    container.id = `item-${fileId}`;
+                    container.className = "preview-card relative group border border-purple-900/40 rounded overflow-hidden bg-black";
+                    container.innerHTML = `
+                        <div class="relative">
+                            <span class="absolute top-1 left-1 bg-green-500 text-black mono text-[7px] px-1 font-bold z-10">SYNC OK</span>
+                            <div class="absolute inset-0 bg-black/80 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                <button class="bg-green-500 text-black px-3 py-1 teko text-lg" onclick="downloadSingle('${base64}', '${file.name}')">DL</button>
+                                <button class="bg-red-600 text-white px-3 py-1 teko text-lg" onclick="removeItem('${fileId}', 'success', '${file.name}')">DEL</button>
+                            </div>
+                        </div>
+                        <div class="p-1 bg-purple-950/20">
+                            <p class="mono text-[7px] text-purple-400 truncate opacity-60 px-1">${file.name}</p>
+                        </div>
+                    `;
+                    container.querySelector('.relative').prepend(canvas);
+                    
+                    successCount++;
+                    // Tetap simpan nama asli file
+                    croppedImages.push({ id: fileId, name: file.name, data: base64 });
+                    previewSuccess.appendChild(container);
+                } else {
+                    throw new Error("No Face Detected");
+                }
+            } catch (err) {
+                noFailState.style.display = 'none';
+                failCount++;
+                const failItem = document.createElement('div');
+                failItem.id = `item-${fileId}`;
+                failItem.className = "flex items-center justify-between border-b border-red-900/20 pb-1";
+                failItem.innerHTML = `
+                    <span class="mono text-[9px] text-red-500 uppercase tracking-tighter">ERR: ${err.message} <span class="text-gray-600 ml-2">/ ${file.name}</span></span>
+                    <button class="text-red-800 hover:text-red-500 mono text-[10px]" onclick="removeItem('${fileId}', 'fail', '${file.name}')">[X]</button>
+                `;
+                previewFail.appendChild(failItem);
+            }
+            updateStats();
+        }
+        btnZip.disabled = croppedImages.length === 0;
+    }
+
+    function getAverageColor(img, x, y, size) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = size; tempCanvas.height = size;
+        const tempCtx = tempCanvas.getContext('2d');
+        const safeX = Math.max(0, Math.min(x, img.width - size));
+        const safeY = Math.max(0, Math.min(y, img.height - size));
+        tempCtx.drawImage(img, safeX, safeY, size, size, 0, 0, size, size);
+        const data = tempCtx.getImageData(0, 0, size, size).data;
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; }
+        const pixels = data.length / 4;
+        return `rgb(${Math.round(r/pixels)}, ${Math.round(g/pixels)}, ${Math.round(b/pixels)})`;
+    }
+
+    function processImage(img, face) {
+        const canvas = document.createElement('canvas');
+        canvas.width = currentConfig.w; canvas.height = currentConfig.h;
+        const ctx = canvas.getContext('2d');
+        let fillColor = bgMode === 'auto' ? getAverageColor(img, 10, 10, 20) : bgMode;
+        const faceHeightRatio = parseFloat(zoomRange.value); 
+        const scale = (canvas.height * faceHeightRatio) / face.height;
+        const cropWidth = canvas.width / scale;
+        const cropHeight = canvas.height / scale;
+        const centerX = face.x + (face.width / 2);
+        const centerY = face.y + (face.height * 0.45); 
+        const srcX = centerX - (cropWidth / 2);
+        const srcY = centerY - (cropHeight / 2);
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, srcX, srcY, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+        return canvas;
+    }
+
+    // Fungsi download satuan: Menggunakan nama asli file
+    function downloadSingle(data, filename) {
+        const link = document.createElement('a');
+        link.href = data;
+        link.download = filename; // Tanpa prefix tambahan
+        link.click();
+    }
+
+    function removeItem(id, type, originalName) {
+        document.getElementById(`item-${id}`)?.remove();
+        uploadedFiles = uploadedFiles.filter(f => f.name !== originalName);
+        if (type === 'success') {
+            croppedImages = croppedImages.filter(img => img.id !== id);
+            successCount--;
+            if (previewSuccess.querySelectorAll('.preview-card').length === 0) emptyState.style.display = 'flex';
+        } else {
+            failCount--;
+            if (previewFail.children.length === 1) noFailState.style.display = 'block';
+        }
+        updateStats();
+        btnZip.disabled = croppedImages.length === 0;
+    }
+
+    function updateStats() {
+        totalCountDisp.innerText = successCount + failCount;
+        successCountDisp.innerText = successCount;
+        failCountDisp.innerText = failCount;
+    }
+
+    // Fungsi ZIP: Menggunakan nama asli file di dalam folder ZIP
+    btnZip.onclick = async () => {
+        if (!croppedImages.length) return;
+        const zip = new JSZip();
+        croppedImages.forEach(img => {
+            // Gunakan img.name (nama asli) langsung
+            zip.file(img.name, img.data.split(',')[1], {base64: true});
+        });
+        const content = await zip.generateAsync({type: "blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `NERV_BATCH_EXPORT_${Date.now()}.zip`;
+        link.click();
+    };
+
+    window.onload = initAI;
+</script>
+
+</body>
+</html>
